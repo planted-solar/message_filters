@@ -41,6 +41,17 @@ from rclpy.duration import Duration
 from rclpy.logging import LoggingSeverity
 from rclpy.time import Time
 
+def get_header(msg):
+    if hasattr(msg, "header"):
+        return msg.header
+    if hasattr(msg, "resp_header"):
+        return msg.resp_header
+    if hasattr(msg, "req_header"):
+        return msg.req_header
+    raise RuntimeError(f"No header for message of type {type(msg)}")
+
+def get_stamp(msg):
+    return get_header(msg).stamp
 
 class SimpleFilter(object):
 
@@ -119,7 +130,7 @@ class Cache(SimpleFilter):
         self.incoming_connection = f.registerCallback(self.add)
 
     def add(self, msg):
-        if not hasattr(msg, 'header') or not hasattr(msg.header, 'stamp'):
+        if not get_header(msg) or not hasattr(get_header(msg), 'stamp'):
             if not self.allow_headerless:
                 msg_filters_logger = rclpy.logging.get_logger('message_filters_cache')
                 msg_filters_logger.set_level(LoggingSeverity.INFO)
@@ -134,7 +145,7 @@ class Cache(SimpleFilter):
 
             stamp = ROSClock().now()
         else:
-            stamp = msg.header.stamp
+            stamp = get_stamp(msg)
             if not hasattr(stamp, 'nanoseconds'):
                 stamp = Time.from_msg(stamp)
         # Insert sorted
@@ -225,7 +236,7 @@ class TimeSynchronizer(SimpleFilter):
 
     def add(self, msg, my_queue, my_queue_index=None):
         self.lock.acquire()
-        stamp = Time.from_msg(msg.header.stamp)
+        stamp = Time.from_msg(get_stamp(msg))
         my_queue[stamp.nanoseconds] = msg
         while len(my_queue) > self.queue_size:
             del my_queue[min(my_queue)]
@@ -259,7 +270,7 @@ class ApproximateTimeSynchronizer(TimeSynchronizer):
         self.allow_headerless = allow_headerless
 
     def add(self, msg, my_queue, my_queue_index=None):
-        if not hasattr(msg, 'header') or not hasattr(msg.header, 'stamp'):
+        if not get_header(msg) or not hasattr(get_header(msg), 'stamp'):
             if not self.allow_headerless:
                 msg_filters_logger = rclpy.logging.get_logger('message_filters_approx')
                 msg_filters_logger.set_level(LoggingSeverity.INFO)
@@ -272,7 +283,7 @@ class ApproximateTimeSynchronizer(TimeSynchronizer):
 
             stamp = ROSClock().now()
         else:
-            stamp = msg.header.stamp
+            stamp = get_stamp(msg)
             if not hasattr(stamp, 'nanoseconds'):
                 stamp = Time.from_msg(stamp)
             # print(stamp)
