@@ -48,7 +48,7 @@ def get_header(msg):
         return msg.resp_header
     if hasattr(msg, "req_header"):
         return msg.req_header
-    raise RuntimeError(f"No header for message of type {type(msg)}")
+    return None
 
 def get_stamp(msg):
     return get_header(msg).stamp
@@ -75,7 +75,7 @@ class SimpleFilter(object):
             cb(*(msg + args))
 
 class Subscriber(SimpleFilter):
-    
+
     """
     ROS 2 subscription filter, takes identical arguments as :class:`rclpy.Subscriber`.
 
@@ -194,7 +194,7 @@ class Cache(SimpleFilter):
         if not self.cache_times:
             return None
         return self.cache_times[0]
-        
+
     def getLast(self):
         if self.getLastestTime() is None:
             return None
